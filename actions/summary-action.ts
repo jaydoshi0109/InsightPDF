@@ -17,13 +17,14 @@ export async function deleteSummaryAction({
     }
     const sql = await getDbConnection();
     //delete from database
-    const result = await sql`
-                DELETE FROM pdf_summaries
-                WHERE id=${summaryId} AND user_id=${userId}
-                RETURNING id
-            `;
+    const result = await sql.query(
+      `DELETE FROM pdf_summaries
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [summaryId, userId]
+    );
     //revalidate path
-    if (result.length > 0) {
+    if (result.rowCount && result.rowCount > 0) {
       revalidatePath("/dashboard");
       return { success: true };
     }

@@ -91,14 +91,12 @@ export async function POST(req: NextRequest) {
     // Get the user's email
     const email = user.emailAddresses[0]?.emailAddress;
     if (!email) {
-      ;
       return new NextResponse(
         JSON.stringify({ error: 'No email address found for user' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
-     || 'User' 
-    });
+    
     // Create a checkout session using our Stripe utility
     const { url } = await createCheckoutSession({
       priceId,

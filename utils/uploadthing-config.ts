@@ -1,0 +1,1 @@
+// utils/uploadthing-config.tsexport const utConfig = {  appId: process.env.UPLOADTHING_APP_ID,  apiKey: process.env.UPLOADTHING_SECRET,  callbackUrl: process.env.NEXTAUTH_URL,};

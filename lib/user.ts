@@ -1,0 +1,1 @@
+import { getDbConnection } from "./db";export async function getUserPlan(email: string) {  try {    const pool = await getDbConnection();    const result = await pool.query(      'SELECT * FROM users WHERE email = $1 AND status = $2',      [email, 'active']    );    return result.rows[0]?.price_id || null;  } catch (error) {    ;    return null;  }}

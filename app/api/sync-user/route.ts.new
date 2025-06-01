@@ -1,0 +1,127 @@
+import { NextResponse } from 'next/server';
+import { query, getOne } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Helper function to create a response with CORS headers
+const createResponse = (data: any, status: number = 200) => {
+  return new NextResponse(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+};
+
+export async function OPTIONS() {
+  return createResponse({ success: true });
+}
+
+export async function POST(request: Request) {
+  console.log('🔄 Sync-user endpoint called');
+  
+  try {
+    // Parse and validate request body
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error('❌ Error parsing request body:', error);
+      return createResponse(
+        { error: 'Invalid JSON in request body' },
+        400
+      );
+    }
+
+    const { userId, email, firstName, lastName, imageUrl } = body;
+    console.log('🔄 Syncing user:', { userId, email: email ? `${email.substring(0, 3)}...` : 'none' });
+
+    // Validate required fields
+    if (!userId) {
+      console.error('❌ Missing required field: userId');
+      return createResponse(
+        { error: 'Missing required field: userId' },
+        400
+      );
+    }
+    
+    if (!email) {
+      console.error('❌ Missing required field: email');
+      return createResponse(
+        { error: 'Missing required field: email' },
+        400
+      );
+    }
+
+    // Set a timeout for database operations
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database operation timeout')), 5000)
+    );
+
+    try {
+      // Check if user already exists
+      console.log(`🔍 Checking if user exists: ${userId}`);
+      const existingUser = await Promise.race([
+        getOne('SELECT id, email FROM users WHERE clerk_id = $1', [userId]),
+        timeoutPromise
+      ]).catch(error => {
+        console.error('❌ Error checking for existing user:', error);
+        throw new Error('Database operation failed');
+      });
+
+      let user;
+      const fullName = [firstName, lastName].filter(Boolean).join(' ') || null;
+      const now = new Date().toISOString();
+
+      if (existingUser) {
+        // Update existing user
+        console.log(`🔄 Updating existing user: ${userId}`);
+        user = await query(
+          `UPDATE users 
+           SET email = $1, full_name = $2, image_url = $3, updated_at = $4
+           WHERE clerk_id = $5
+           RETURNING id, email, status`,
+          [email, fullName, imageUrl, now, userId]
+        );
+      } else {
+        // Create new user
+        console.log(`🆕 Creating new user: ${userId}`);
+        user = await query(
+          `INSERT INTO users (clerk_id, email, full_name, image_url, status, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, 'active', $5, $6)
+           RETURNING id, email, status`,
+          [userId, email, fullName, imageUrl, now, now]
+        );
+      }
+
+      if (!user || !user.rows || user.rows.length === 0) {
+        throw new Error('Failed to create/update user in database');
+      }
+
+      console.log(`✅ User sync successful: ${userId}`);
+      return createResponse({
+        success: true,
+        user: user.rows[0]
+      });
+    } catch (error) {
+      console.error('❌ Database error during user sync:', error);
+      throw error; // Will be caught by the outer catch
+    }
+  } catch (error) {
+    console.error('❌ Error in sync-user endpoint:', error);
+    return createResponse(
+      { 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
+      500
+    );
+  }
+}

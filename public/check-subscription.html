@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Subscription Status</title>
+    <script>
+        async function checkSubscription() {
+            try {
+                console.log('Fetching subscription status...');
+                const response = await fetch('/api/user/subscription', {
+                    credentials: 'include' // Include cookies for authentication
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('=== SUBSCRIPTION STATUS ===');
+                console.log('Status:', data.status || 'inactive');
+                console.log('Price ID:', data.price_id || 'None');
+                console.log('Customer ID:', data.customer_id || 'None');
+                console.log('Payment Status:', data.payment_status || 'None');
+                
+                // Display on the page
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <h3>Subscription Status</h3>
+                    <p><strong>Status:</strong> ${data.status || 'inactive'}</p>
+                    <p><strong>Plan:</strong> ${data.price_id ? (data.price_id.includes('pro') ? 'Pro' : 'Basic') : 'Free'}</p>
+                    <p><strong>Customer ID:</strong> ${data.customer_id || 'None'}</p>
+                    <p><strong>Payment Status:</strong> ${data.payment_status || 'None'}</p>
+                `;
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+                document.getElementById('result').innerHTML = 
+                    `<div style="color: red;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Run when the page loads
+        window.onload = checkSubscription;
+    </script>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <h1>Subscription Status Check</h1>
+        <p>This page will check your current subscription status.</p>
+        <div id="result" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+            Loading...
+        </div>
+        <div style="margin-top: 20px;">
+            <button onclick="checkSubscription()" style="padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Refresh Status
+            </button>
+        </div>
+    </div>
+</body>
+</html>

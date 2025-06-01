@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                   String    @id @default(cuid())
+  clerkId              String    @unique @map("clerk_id")
+  email                String    @unique
+  name                 String?
+  plan                 Plan      @default(FREE)
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId  String?   @unique @map("stripe_subscription_id")
+  stripePriceId        String?   @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  pdfs                 Pdf[]
+
+
+  @@map("users")
+}
+
+model Pdf {
+  id          String   @id @default(cuid())
+  title       String
+  url         String
+  key         String
+  summary     String?
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("pdfs")
+}
+
+enum Plan {
+  FREE
+  BASIC
+  PRO
+}
